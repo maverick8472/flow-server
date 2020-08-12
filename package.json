@@ -1,0 +1,11 @@
+{
+  "name": "flow-server",
+  "version": "1.0.0",
+  "description": "flow server",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "maverick_8472",
+  "license": "ISC"
+}
