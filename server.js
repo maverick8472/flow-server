@@ -1,6 +1,8 @@
 const express = require('express')
 const app = express()
 
+require('./helpers/db-connection')();
+
 
 const users = require('./routes/users');
 
