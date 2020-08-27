@@ -1,10 +1,13 @@
-const {User} = require('../models/user')
+const {User, validateAuth, validateRegister} = require('../models/user')
 const bcrypt = require('bcrypt');
 const _ = require('lodash')
 
 async function loginUser(req, res){
     console.log('login');
-	console.log(req.body);
+    console.log(req.body);
+    
+    const {error} = validateAuth(req.body);
+    if(error) return res.status(400).send(error.details[0].message);
 	
     let user = await User.findOne({email: req.body.email});
     if(!user) return res.status(400).send({message : 'Invalid email or password.'});
@@ -14,8 +17,8 @@ async function loginUser(req, res){
 
     if(user.isDeleted == true) res.status(400).send({message : 'The user with the given ID was not found.'});
 
-    //res.send(_.pick(user, ['_id','username','email']));
-	res.header('x-auth-token','12346424282').send(_.pick(user, ['_id','username','email']));
+    const token = user.generateAuthToken();
+    res.header('x-auth-token',token).send(_.pick(user, ['_id','username','email']));
 }
 
 async function registerUser(req, res){
