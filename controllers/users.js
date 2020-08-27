@@ -2,6 +2,11 @@ const {User, validateAuth, validateRegister} = require('../models/user')
 const bcrypt = require('bcrypt');
 const _ = require('lodash')
 
+async function getCurrentUser(req, res){
+    const user = await User.findById(req.user._id).select('-password');
+    res.send(user);
+}
+
 async function loginUser(req, res){
     console.log('login');
     console.log(req.body);
@@ -23,14 +28,18 @@ async function loginUser(req, res){
 
 async function registerUser(req, res){
     console.log('register');
-	console.log(req.body);
+    console.log(req.body);
+    
+    const {error} = validateRegister(req.body);
+    if(error) return res.status(400).send(error.details[0].message);
 	
     var message = 'User already registered.';
     let user = await User.findOne({email: req.body.email});
     if(user) {
         if(user.isDeleted == true){
             await user.update({isDeleted: false});
-            res.send(_.pick(user, ['_id','username','email']));
+            const token = user.generateAuthToken();
+            res.header('x-auth-token',token).send(_.pick(user, ['_id','username','email']));
 
         }else return res.status(400).send({message});
     }
@@ -45,8 +54,9 @@ async function registerUser(req, res){
         const salt = await bcrypt.genSalt(10);
         user.password = await bcrypt.hash(user.password, salt);
         await user.save();
-    
-        res.send(_.pick(user, ['_id','username','email']));
+
+        const token = user.generateAuthToken(); 
+        res.header('x-auth-token',token).send(_.pick(user, ['_id','username','email']));
     } 
 };
 
@@ -72,6 +82,7 @@ async function deleteUser(req, res){
 
 }
 
+exports.getCurrentUser= getCurrentUser;
 exports.registerUser = registerUser;
 exports.loginUser = loginUser;
 exports.editUser = editUser;
