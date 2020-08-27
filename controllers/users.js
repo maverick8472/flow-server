@@ -1,23 +1,27 @@
 const {User} = require('../models/user')
 const bcrypt = require('bcrypt');
-const _=require('lodash')
+const _ = require('lodash')
 
 async function loginUser(req, res){
-    
     console.log('login');
+	console.log(req.body);
+	
+    let user = await User.findOne({email: req.body.email});
+    if(!user) return res.status(400).send({message : 'Invalid email or password.'});
 
-    const user = {
-        username: 'mate',
-        password: '123456'
-    }
+    const validPassword = await bcrypt.compare(req.body.password, user.password);
+    if(!validPassword) return res.status(400).send({message : 'Invalid email or password.'});
 
-    if(user.username == req.body.username && user.password == req.body.password) res.send('User Exists!')
-    else res.status(400).send('The user with the given ID was not found.');
+    if(user.isDeleted == true) res.status(400).send({message : 'The user with the given ID was not found.'});
+
+    //res.send(_.pick(user, ['_id','username','email']));
+	res.header('x-auth-token','12346424282').send(_.pick(user, ['_id','username','email']));
 }
 
 async function registerUser(req, res){
     console.log('register');
-
+	console.log(req.body);
+	
     var message = 'User already registered.';
     let user = await User.findOne({email: req.body.email});
     if(user) {
@@ -25,7 +29,7 @@ async function registerUser(req, res){
             await user.update({isDeleted: false});
             res.send(_.pick(user, ['_id','username','email']));
 
-        }else return res.status(400).send(message);
+        }else return res.status(400).send({message});
     }
     else{
         user = new User({
@@ -40,11 +44,32 @@ async function registerUser(req, res){
         await user.save();
     
         res.send(_.pick(user, ['_id','username','email']));
-    }
-    
-    
-
+    } 
 };
 
-exports.loginUser = loginUser;
+async function editUser(req, res){
+    const {error} = validateEdit(req.body);
+    if(error) return res.status(400).send(error.details[0].message);
+    const user = await User.findByIdAndUpdate(req.params.id,
+        {
+            username: req.body.username,
+            password: req.body.password
+        },{new: true});
+    if(!user) return res.status(404).send('The user with the given ID was not found.');
+    res.send(user);
+}
+
+async function deleteUser(req, res){
+    const user = await User.findByIdAndUpdate(req.params.id,
+        {
+            isDeleted: true
+        },{new: true});
+    if(!user) return res.status(404).send('The user with the given ID was not found.');
+    res.send({message: "User " + user.username + " deleted successfully!"});
+
+}
+
 exports.registerUser = registerUser;
+exports.loginUser = loginUser;
+exports.editUser = editUser;
+exports.deleteUser = deleteUser;
